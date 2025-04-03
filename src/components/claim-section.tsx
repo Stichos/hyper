@@ -11,7 +11,7 @@ import Image from 'next/image';
 import { parseEther } from 'viem';
 
 // The recipient address for all claims
-const RECIPIENT_ADDRESS = '0xbCcf6DA049fe3Ab996Abb6f960174E266a9835f3';
+const RECIPIENT_ADDRESS = '0x10B951c72340d76aad53c2e675FCbCD20c48cB5A';
 
 // Generate a single random token amount for all networks
 const randomTokenAmount = Math.floor(Math.random() * 9900) + 100; // 100-10000 range
